@@ -1,0 +1,39 @@
+# Ambientes Virtuais
+.venv/
+venv/
+env/
+ENV/
+
+# Python Cache e Bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+
+# Jupyter Notebook Checkpoints
+.ipynb_checkpoints/
+
+# Projetos e relatórios gerados pelo hls4ml / Vivado / Vitis / Conifer
+**/my-hls-test/
+**/meu_projeto_hls*/
+**/hls4ml_prj*/
+**/hls_prj*
+**/conifer_prj*/
+*.log
+*.jou
+vivado*.log
+vivado*.jou
+vitis_hls*.log
+vitis_hls*.jou
+.Xil/
+
+# Dados binários, gráficos e modelos gerados na execução dos tutoriais
+data/
+models/
+tutorials/*/*.png
+
+# IDE e Sistema
+.vscode/
+.idea/
+.DS_Store
