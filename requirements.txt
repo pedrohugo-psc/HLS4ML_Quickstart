@@ -5,6 +5,7 @@
 hls4ml[profiling]>=1.3.0
 
 # Frameworks de Treinamento e Exportação de Modelos
+setuptools>=77.0.3,<81
 torch>=2.2.0
 onnx>=1.16.0
 onnxoptimizer>=0.4.0

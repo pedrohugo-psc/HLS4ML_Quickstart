@@ -57,10 +57,18 @@ def main():
         classes = np.load(classes_path, allow_pickle=True)
     else:
         print("  Baixando dataset 'hls4ml_lhc_jets_hlf' via OpenML...")
-        from sklearn.datasets import fetch_openml
-        data = fetch_openml('hls4ml_lhc_jets_hlf', version=1, as_frame=True)
-        X = data['data'].to_numpy(dtype=np.float32)
-        y_raw = data['target'].to_numpy()
+        import pandas as pd
+        try:
+            df = pd.read_parquet("https://data.openml.org/datasets/0004/42468/dataset_42468.pq")
+            target_col = "class" if "class" in df.columns else df.columns[-1]
+            X = df.drop(columns=[target_col]).to_numpy(dtype=np.float32)
+            s = df[target_col]
+            y_raw = s.str.decode("utf-8").to_numpy() if len(s) > 0 and isinstance(s.iloc[0], (bytes, bytearray)) else s.astype(str).to_numpy()
+        except Exception:
+            from sklearn.datasets import fetch_openml
+            data = fetch_openml('hls4ml_lhc_jets_hlf', version=1, as_frame=True, data_home=data_dir)
+            X = data['data'].to_numpy(dtype=np.float32)
+            y_raw = data['target'].astype(str).to_numpy()
 
         le = LabelEncoder()
         y_int = le.fit_transform(y_raw)
