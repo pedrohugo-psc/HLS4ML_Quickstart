@@ -1,8 +1,13 @@
-# Ambientes Virtuais
+# Clones oficiais locais (baixados automaticamente por scripts/setup_env.sh)
+hls4ml/
+hls4ml-tutorial/
+
+# Ambientes Virtuais e Gerenciador Python Local
 .venv/
 venv/
 env/
 ENV/
+.uv/
 
 # Python Cache e Bytecode
 __pycache__/
@@ -13,6 +18,7 @@ __pycache__/
 
 # Jupyter Notebook Checkpoints
 .ipynb_checkpoints/
+**/.ipynb_checkpoints/
 
 # Projetos e relatórios gerados pelo hls4ml / Vivado / Vitis / Conifer
 **/my-hls-test/
@@ -28,12 +34,15 @@ vitis_hls*.log
 vitis_hls*.jou
 .Xil/
 
-# Dados binários, gráficos e modelos gerados na execução dos tutoriais
+# Dados binários e modelos caso criados na raiz
 data/
 models/
-tutorials/*/*.png
 
 # IDE e Sistema
 .vscode/
 .idea/
 .DS_Store
+
+# Saidas do PySR / Julia
+outputs/
+hall_of_fame*
