@@ -203,21 +203,29 @@ inline ap_fixed<W, I> recip(const T& x) {
     double d = _shim_to_double(x);
     return ap_fixed<W, I>(d != 0.0 ? (1.0 / d) : 0.0);
 }
+inline double recip(double x) { return x != 0.0 ? (1.0 / x) : 0.0; }
+inline float recip(float x) { return x != 0.0f ? (1.0f / x) : 0.0f; }
 
 template<int W, int I, typename TBase, typename TExp>
 inline ap_fixed<W, I> pow(const TBase& base, const TExp& exp_val) {
     return ap_fixed<W, I>(std::pow(_shim_to_double(base), _shim_to_double(exp_val)));
 }
+inline double pow(double b, double e) { return std::pow(b, e); }
+inline float pow(float b, float e) { return std::pow(b, e); }
 
 template<int W, int I, typename T1, typename T2>
 inline ap_fixed<W, I> atan2(const T1& y, const T2& x) {
     return ap_fixed<W, I>(std::atan2(_shim_to_double(y), _shim_to_double(x)));
 }
+inline double atan2(double y, double x) { return std::atan2(y, x); }
+inline float atan2(float y, float x) { return std::atan2(y, x); }
 
 template<int W, int I, typename T1, typename T2>
 inline ap_fixed<W, I> hypot(const T1& x, const T2& y) {
     return ap_fixed<W, I>(std::hypot(_shim_to_double(x), _shim_to_double(y)));
 }
+inline double hypot(double x, double y) { return std::hypot(x, y); }
+inline float hypot(float x, float y) { return std::hypot(x, y); }
 
 } // namespace hls
 
@@ -244,8 +252,13 @@ _SHIM_ROOT = os.path.join(_VENV_PREFIX, "share", "hls_shim")
 os.environ.setdefault("XILINX_VITIS", _SHIM_ROOT)
 os.environ.setdefault("KERAS_HOME", os.path.join(_VENV_PREFIX, "share", "keras"))
 os.environ.setdefault("IPYTHONDIR", os.path.join(_VENV_PREFIX, "etc", "ipython"))
+os.environ.setdefault("JUPYTER_CONFIG_DIR", os.path.join(_VENV_PREFIX, "etc", "jupyter"))
 os.environ.setdefault("JULIA_DEPOT_PATH", os.path.join(_VENV_PREFIX, "share", "julia"))
 os.environ.setdefault("PYTHON_JULIAPKG_PROJECT", os.path.join(_VENV_PREFIX, "share", "pyjuliapkg"))
+os.environ.setdefault("PYTHON_JULIACALL_HANDLE_SIGNALS", "yes")
+os.environ.setdefault("PYTHON_JULIACALL_THREADS", "auto")
+os.environ.setdefault("PYTHON_JULIACALL_AUTOLOAD_IPYTHON_EXTENSION", "no")
+os.environ.setdefault("TF_CPP_MIN_LOG_LEVEL", "3")
 
 
 def _download_with_resume(url, dest_path, max_retries=8, timeout=30):
@@ -513,9 +526,12 @@ def _register_notebook_compat():
         raw = getattr(info, "raw_cell", "") or ""
         if ("pysr" in raw or "juliacall" in raw) and "juliacall" not in sys.modules:
             try:
-                importlib.import_module("juliacall")
+                importlib.import_module("pysr")
             except Exception:
-                pass
+                try:
+                    importlib.import_module("juliacall")
+                except Exception:
+                    pass
 
     def _post_cell(_result):
         ns = ip.user_ns
@@ -551,12 +567,40 @@ if os.path.isfile(kernel_json_path):
     env_map = kdata.setdefault("env", {})
     env_map["KERAS_HOME"] = os.path.join(venv_dir, "share", "keras")
     env_map["IPYTHONDIR"] = os.path.join(venv_dir, "etc", "ipython")
+    env_map["JUPYTER_CONFIG_DIR"] = os.path.join(venv_dir, "etc", "jupyter")
     env_map["JULIA_DEPOT_PATH"] = os.path.join(venv_dir, "share", "julia")
     env_map["PYTHON_JULIAPKG_PROJECT"] = os.path.join(venv_dir, "share", "pyjuliapkg")
+    env_map["PYTHON_JULIACALL_HANDLE_SIGNALS"] = "yes"
+    env_map["PYTHON_JULIACALL_THREADS"] = "auto"
+    env_map["PYTHON_JULIACALL_AUTOLOAD_IPYTHON_EXTENSION"] = "no"
+    env_map["TF_CPP_MIN_LOG_LEVEL"] = "3"
     with open(kernel_json_path, "w", encoding="utf-8") as fh:
         json.dump(kdata, fh, indent=2)
 
-# 5f. Adicionar exports ao .venv/bin/activate (idempotente)
+# 5f. Configuracao isolada do servidor JupyterLab na .venv
+jupyter_cfg_dir = os.path.join(venv_dir, "etc", "jupyter")
+os.makedirs(jupyter_cfg_dir, exist_ok=True)
+images_abs_dir = os.path.join(project_dir, "hls4ml-tutorial", "images")
+jupyter_cfg_code = f'''c = get_config()  # noqa: F821
+c.ServerApp.open_browser = False
+c.ServerApp.websocket_ping_interval = 30000
+c.ServerApp.websocket_ping_timeout = 25000
+c.MappingKernelManager.cull_idle_timeout = 1800
+c.MappingKernelManager.cull_interval = 120
+c.MappingKernelManager.cull_connected = False
+
+import os
+from tornado.web import StaticFileHandler
+img_dir = {images_abs_dir!r}
+if os.path.isdir(img_dir):
+    c.ServerApp.extra_handlers = [
+        (r"/images/(.*)", StaticFileHandler, {{"path": img_dir}}),
+    ]
+'''
+with open(os.path.join(jupyter_cfg_dir, "jupyter_server_config.py"), "w", encoding="utf-8") as fh:
+    fh.write(jupyter_cfg_code)
+
+# 5g. Adicionar exports ao .venv/bin/activate (idempotente)
 activate_path = os.path.join(venv_dir, "bin", "activate")
 marker = "# --- hls4ml-quickstart env ---"
 if os.path.isfile(activate_path):
@@ -568,8 +612,13 @@ if os.path.isfile(activate_path):
 export XILINX_VITIS="${{XILINX_VITIS:-{venv_dir}/share/hls_shim}}"
 export KERAS_HOME="{venv_dir}/share/keras"
 export IPYTHONDIR="{venv_dir}/etc/ipython"
+export JUPYTER_CONFIG_DIR="{venv_dir}/etc/jupyter"
 export JULIA_DEPOT_PATH="{venv_dir}/share/julia"
 export PYTHON_JULIAPKG_PROJECT="{venv_dir}/share/pyjuliapkg"
+export PYTHON_JULIACALL_HANDLE_SIGNALS="yes"
+export PYTHON_JULIACALL_THREADS="auto"
+export PYTHON_JULIACALL_AUTOLOAD_IPYTHON_EXTENSION="no"
+export TF_CPP_MIN_LOG_LEVEL="3"
 """
         with open(activate_path, "a", encoding="utf-8") as fh:
             fh.write(extra_exports)

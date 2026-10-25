@@ -69,7 +69,7 @@ No navegador, abra a pasta **`hls4ml-tutorial/`** para acessar os 11 notebooks o
 
 > **Observações importantes ao executar os notebooks:**
 > - **Escolha de framework (`MODEL_TYPE`):** Nos notebooks `1c`, `3a`, `3b` e `6a`, a primeira célula define `MODEL_TYPE = 'keras'` (requer ter rodado `1a`) ou `MODEL_TYPE = 'pytorch'` (requer ter rodado `1b`).
-> - **Simulação C++ (`g++`) vs Síntese RTL (`Vitis HLS`):** Todas as células até `hls_model.compile()`, `hls_model.predict()` e gráficos ROC funcionam apenas com `g++`. As últimas células da seção *Synthesize* (`hls_model.build(...)` e `read_vivado_report(...)`) invocam o compilador proprietário *AMD Vitis HLS* caso esteja instalado no `PATH`.
+> - **Simulação C++ (`g++`) vs Síntese RTL (`Vitis HLS`):** Todas as células até `hls_model.compile()`, `hls_model.predict()` e gráficos ROC funcionam apenas com o compilador livre `g++`. As células finais da seção *Synthesize* (`hls_model.build(...)` e `read_vivado_report(...)`) invocam o sintetizador proprietário *AMD Vitis HLS* (`vitis-run`) caso esteja instalado no `PATH`. Em computadores pessoais e ambientes de estudo sem o Vitis HLS instalado (~100 GB), é padrão e esperado rodar até as células de predição e curvas ROC (que já validam o circuito bit-accurate em ponto fixo) e pular a célula final de síntese RTL.
 
 ---
 
