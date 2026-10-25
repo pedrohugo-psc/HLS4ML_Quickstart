@@ -258,6 +258,7 @@ os.environ.setdefault("PYTHON_JULIAPKG_PROJECT", os.path.join(_VENV_PREFIX, "sha
 os.environ.setdefault("PYTHON_JULIACALL_HANDLE_SIGNALS", "yes")
 os.environ.setdefault("PYTHON_JULIACALL_THREADS", "auto")
 os.environ.setdefault("PYTHON_JULIACALL_AUTOLOAD_IPYTHON_EXTENSION", "no")
+os.environ.setdefault("JULIA_PKG_IGNORE_HASHES", "1")
 os.environ.setdefault("TF_CPP_MIN_LOG_LEVEL", "3")
 
 
@@ -499,6 +500,10 @@ for _finder in list(sys.meta_path):
 
 with open(os.path.join(site_pkgs, "sitecustomize.py"), "w", encoding="utf-8") as fh:
     fh.write(sitecustomize_code)
+with open(os.path.join(site_pkgs, "_hls4ml_site_init.py"), "w", encoding="utf-8") as fh:
+    fh.write(sitecustomize_code)
+with open(os.path.join(site_pkgs, "_hls4ml_init.pth"), "w", encoding="utf-8") as fh:
+    fh.write("import _hls4ml_site_init\n")
 
 # 5d. Hook IPython/Jupyter para contornar o bug upstream de 2_quantization/2b_brevitas.ipynb sem editar o .ipynb
 ipy_startup_dir = os.path.join(venv_dir, "etc", "ipython", "profile_default", "startup")
@@ -573,6 +578,7 @@ if os.path.isfile(kernel_json_path):
     env_map["PYTHON_JULIACALL_HANDLE_SIGNALS"] = "yes"
     env_map["PYTHON_JULIACALL_THREADS"] = "auto"
     env_map["PYTHON_JULIACALL_AUTOLOAD_IPYTHON_EXTENSION"] = "no"
+    env_map["JULIA_PKG_IGNORE_HASHES"] = "1"
     env_map["TF_CPP_MIN_LOG_LEVEL"] = "3"
     with open(kernel_json_path, "w", encoding="utf-8") as fh:
         json.dump(kdata, fh, indent=2)
@@ -618,6 +624,7 @@ export PYTHON_JULIAPKG_PROJECT="{venv_dir}/share/pyjuliapkg"
 export PYTHON_JULIACALL_HANDLE_SIGNALS="yes"
 export PYTHON_JULIACALL_THREADS="auto"
 export PYTHON_JULIACALL_AUTOLOAD_IPYTHON_EXTENSION="no"
+export JULIA_PKG_IGNORE_HASHES="1"
 export TF_CPP_MIN_LOG_LEVEL="3"
 """
         with open(activate_path, "a", encoding="utf-8") as fh:
