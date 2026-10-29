@@ -28,8 +28,8 @@ sudo apt install -y build-essential g++ python3 git curl graphviz
 
 ### 2.2 Clonar e Configurar o Ambiente
 ```bash
-git clone https://github.com/pedrohugo-psc/HSL4ML_Quickstart.git
-cd HSL4ML_Quickstart
+git clone https://github.com/pedrohugo-psc/HLS4ML_Quickstart.git
+cd HLS4ML_Quickstart
 ./scripts/setup_env.sh
 ```
 O script `setup_env.sh` realiza automaticamente:
