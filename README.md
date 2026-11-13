@@ -18,7 +18,7 @@ Repositório de automação de ambiente Linux para síntese de *Machine Learning
 
 ## 2. Instalação (Linux — Ubuntu/Debian)
 
-A compilação e a simulação funcional em ponto fixo (*C-Simulation*, `hls_model.compile()` + `predict()`) utilizam apenas o compilador `g++`. O *AMD Vitis HLS / Vivado* só é necessário caso deseje executar as células finais opcionais de síntese RTL (`hls_model.build()`).
+A compilação, a simulação funcional em ponto fixo (*C-Simulation*, `hls_model.compile()` + `predict()`) e o ciclo básico de `hls_model.build()` (Verilog/VHDL, relatórios `csynth` e co-simulação `cosim`) funcionam usando apenas `g++` e o motor provisionado na `.venv`. O *AMD Vitis HLS / Vivado* oficial só é necessário caso deseje executar síntese lógica em FPGA (`vsynth`), exportação de IP/bitstream (`export=True` / `bitfile=True`) ou gerar RTL/métricas de produção para gravação em placa física.
 
 ### 2.1 Dependências do Sistema
 ```bash
@@ -69,7 +69,7 @@ No navegador, abra a pasta **`hls4ml-tutorial/`** para acessar os 11 notebooks o
 
 > **Observações importantes ao executar os notebooks:**
 > - **Escolha de framework (`MODEL_TYPE`):** Nos notebooks `1c`, `3a`, `3b` e `6a`, a primeira célula define `MODEL_TYPE = 'keras'` (requer ter rodado `1a`) ou `MODEL_TYPE = 'pytorch'` (requer ter rodado `1b`).
-> - **Ciclo de Síntese HLS (Verilog/VHDL, Relatórios e Co-Simulação):** O ambiente `.venv` provisiona o motor de síntese em `.venv/share/hls_shim/hls_synth_engine.py` com wrappers para `vitis-run`, `vitis_hls` e `vivado_hls` (delegando automaticamente caso o AMD Vitis/Vivado oficial esteja instalado). Isso permite executar `hls_model.build(...)`, `hls4ml.report.read_vivado_report(...)` e `conifer_model.build(...)` diretamente nos notebooks, gerando arquivos Verilog (`.v`), VHDL (`.vhd`), relatórios `csynth.rpt`/`.xml` e co-simulação C/RTL (`cosim` + `validation`). Síntese lógica out-of-context (`vsynth`) e exportação de IP/bitfile ficam fora deste escopo.
+> - **Ciclo de Síntese HLS (Verilog/VHDL, Relatórios e Co-Simulação):** O ambiente `.venv` provisiona o motor de síntese em `.venv/share/hls_shim/hls_synth_engine.py` com wrappers para `vitis-run`, `vitis_hls` e `vivado_hls`. Se o **AMD Vitis/Vivado oficial** estiver instalado no sistema (`/tools/Xilinx`, `/opt/Xilinx` ou no `PATH` após `source settings64.sh`), as chamadas são **delegadas automaticamente** para ele — bastando passar `export=True` (e/ou `vsynth=True`) em `hls_model.build(...)` para gerar o IP Core oficial em `impl/ip/` e a síntese lógica completa. Caso contrário, o motor permite executar `hls_model.build(...)`, `hls4ml.report.read_vivado_report(...)` e `conifer_model.build(...)` diretamente nos notebooks, gerando arquivos Verilog (`.v`), VHDL (`.vhd`), relatórios `csynth.rpt`/`.xml` e co-simulação C/RTL (`cosim` + `validation`). **Atenção:** sem o Vitis/Vivado oficial, a simulação `csim` em C++ (`g++`) e o backend VHDL do `conifer` são funcionais, mas os arquivos `.v`/`.vhd` e as métricas de área/latência geradas para redes neurais do `hls4ml` são **estruturais/estimados** (não devem ser usados diretamente para gravar em FPGA físico). Sem Vivado oficial, `vsynth=True` e `export=True` são apenas ignorados com aviso informativo.
 
 ---
 
@@ -114,6 +114,7 @@ hls_model.compile()
 y_hls = hls_model.predict(np.ascontiguousarray(X_teste, dtype=np.float32))
 
 # Síntese HLS para geração de Verilog/VHDL, relatórios e co-simulação C/RTL
+# (Com Vitis/Vivado oficial instalado, adicione vsynth=True, export=True para síntese lógica e IP Core em impl/ip/)
 hls_model.build(csim=True, synth=True, cosim=True, validation=True)
 hls4ml.report.read_vivado_report('meu_projeto_hls')
 ```
@@ -132,11 +133,11 @@ hls4ml.report.read_vivado_report('meu_projeto_hls')
 ├── myproject_test.cpp / myproject_bridge.cpp
 ├── build_prj.tcl / project.tcl            # Scripts TCL de síntese para Vitis/Vivado HLS
 │
-└── myproject_prj/solution1/               # [Gerado pelo Vitis/Vivado HLS em build(synth=True)]
+└── myproject_prj/solution1/               # [Gerado em build(synth=True) via motor HLS ou Vitis/Vivado]
     ├── syn/verilog/                       # Arquivos Verilog (.v)
     ├── syn/vhdl/                          # Arquivos VHDL (.vhd)
     ├── syn/report/                        # Relatórios de latência e área (LUT, FF, DSP, BRAM)
-    └── impl/ip/                           # Pacote IP Core exportado
+    └── impl/ip/                           # Pacote IP Core (somente com Vitis/Vivado oficial e export=True)
 ```
 
 ---

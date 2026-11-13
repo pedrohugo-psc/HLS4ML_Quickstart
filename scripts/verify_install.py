@@ -62,9 +62,22 @@ def main():
             diff_out = subprocess.check_output(
                 ["git", "-C", repo_path, "diff", "--name-only"], text=True
             ).strip()
-            clean_str = "intacto (0 arquivos modificados)" if not diff_out else f"MODIFICADO ({diff_out})"
-            if diff_out:
+            changed = [line.strip() for line in diff_out.splitlines() if line.strip()]
+            if not changed:
+                clean_str = "intacto (0 arquivos modificados)"
+            elif repo_name == "hls4ml-tutorial":
+                nb_mods = [f for f in changed if f.endswith(".ipynb")]
+                other_mods = [f for f in changed if not f.endswith(".ipynb")]
+                if other_mods:
+                    ok = False
+                    clean_str = f"MODIFICADO ({', '.join(other_mods)})"
+                else:
+                    clean_str = (
+                        f"intacto no codigo ({len(nb_mods)} notebook(s) .ipynb com alteracoes/saidas locais)"
+                    )
+            else:
                 ok = False
+                clean_str = f"MODIFICADO ({', '.join(changed)})"
             print(f"  {repo_name:18} : OK — {clean_str}")
         else:
             print(f"  {repo_name:18} : AUSENTE ({repo_path})")
