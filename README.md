@@ -69,7 +69,7 @@ No navegador, abra a pasta **`hls4ml-tutorial/`** para acessar os 11 notebooks o
 
 > **Observações importantes ao executar os notebooks:**
 > - **Escolha de framework (`MODEL_TYPE`):** Nos notebooks `1c`, `3a`, `3b` e `6a`, a primeira célula define `MODEL_TYPE = 'keras'` (requer ter rodado `1a`) ou `MODEL_TYPE = 'pytorch'` (requer ter rodado `1b`).
-> - **Simulação C++ (`g++`) vs Síntese RTL (`Vitis HLS`):** Todas as células até `hls_model.compile()`, `hls_model.predict()` e gráficos ROC funcionam apenas com o compilador livre `g++`. As células finais da seção *Synthesize* (`hls_model.build(...)` e `read_vivado_report(...)`) invocam o sintetizador proprietário *AMD Vitis HLS* (`vitis-run`) caso esteja instalado no `PATH`. Em computadores pessoais e ambientes de estudo sem o Vitis HLS instalado (~100 GB), é padrão e esperado rodar até as células de predição e curvas ROC (que já validam o circuito bit-accurate em ponto fixo) e pular a célula final de síntese RTL.
+> - **Ciclo de Síntese HLS (Verilog/VHDL, Relatórios e Co-Simulação):** O ambiente `.venv` provisiona o motor de síntese em `.venv/share/hls_shim/hls_synth_engine.py` com wrappers para `vitis-run`, `vitis_hls` e `vivado_hls` (delegando automaticamente caso o AMD Vitis/Vivado oficial esteja instalado). Isso permite executar `hls_model.build(...)`, `hls4ml.report.read_vivado_report(...)` e `conifer_model.build(...)` diretamente nos notebooks, gerando arquivos Verilog (`.v`), VHDL (`.vhd`), relatórios `csynth.rpt`/`.xml` e co-simulação C/RTL (`cosim` + `validation`). Síntese lógica out-of-context (`vsynth`) e exportação de IP/bitfile ficam fora deste escopo.
 
 ---
 
@@ -113,8 +113,9 @@ hls_model.write()
 hls_model.compile()
 y_hls = hls_model.predict(np.ascontiguousarray(X_teste, dtype=np.float32))
 
-# Síntese RTL para geração de Verilog/VHDL (requer Vitis/Vivado HLS instalado)
-# hls_model.build(csim=False, synth=True, export=True)
+# Síntese HLS para geração de Verilog/VHDL, relatórios e co-simulação C/RTL
+hls_model.build(csim=True, synth=True, cosim=True, validation=True)
+hls4ml.report.read_vivado_report('meu_projeto_hls')
 ```
 
 ---
@@ -149,7 +150,8 @@ y_hls = hls_model.predict(np.ascontiguousarray(X_teste, dtype=np.float32))
 ├── novo_projeto_template.py     # Template independente para criação de novos projetos
 ├── scripts/
 │   ├── setup_env.sh             # Clona hls4ml + hls4ml-tutorial, cria .venv (Python 3.12) e baixa dados
-│   └── verify_install.py        # Verifica integridade dos clones, pacotes e compilação C++
+│   ├── hls_synth_engine.py      # Motor de síntese HLS (Verilog/VHDL), relatórios csynth e co-simulação
+│   └── verify_install.py        # Verifica integridade dos clones, pacotes, C++ e síntese Verilog/VHDL
 ├── hls4ml/                      # [Clonado por setup_env.sh] Repositório oficial fastmachinelearning/hls4ml
 └── hls4ml-tutorial/             # [Clonado por setup_env.sh] Repositório oficial fastmachinelearning/hls4ml-tutorial
 ```

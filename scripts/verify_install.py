@@ -114,14 +114,15 @@ def main():
             print(f"  {label:16} : AUSENTE ({exc})")
             ok = False
 
-    print_header("4. Compiladores C/C++ e Ferramentas Auxiliares")
+    print_header("4. Compiladores C/C++ e Ferramentas HLS/RTL")
     print(f"  g++        : {check_command('g++')}")
     print(f"  gcc        : {check_command('gcc')}")
     print(f"  dot        : {check_command('dot')} (Graphviz para plot_model)")
-    print(f"  vitis_hls  : {check_command('vitis_hls')} (opcional — apenas sintese RTL)")
-    print(f"  vivado     : {check_command('vivado')} (opcional — apenas sintese RTL)")
+    print(f"  vitis-run  : {check_command('vitis-run')}")
+    print(f"  vitis_hls  : {check_command('vitis_hls')}")
+    print(f"  vivado_hls : {check_command('vivado_hls')}")
 
-    print_header("5. Teste de Conversao e Compilacao C++ (hls4ml)")
+    print_header("5. Teste Completo: Conversao, C++, Verilog/VHDL e Co-Simulacao")
     temp_dir = tempfile.mkdtemp(prefix="hls4ml_verify_")
     original_cwd = os.getcwd()
     try:
@@ -129,20 +130,33 @@ def main():
         import torch.nn as nn
         import hls4ml
 
-        print("  [1/3] Instanciando rede de teste (PyTorch MLP)...")
+        print("  [1/4] Instanciando rede de teste (PyTorch MLP)...")
         net = nn.Sequential(nn.Linear(16, 16), nn.ReLU(), nn.Linear(16, 5), nn.Softmax(dim=-1)).eval()
         cfg = hls4ml.utils.config_from_pytorch_model(net, input_shape=(16,), granularity="model", backend="Vitis")
 
-        print("  [2/3] Convertendo modelo para C++/HLS e compilando com g++...")
+        prj_dir = os.path.join(temp_dir, "hls_prj")
+        print("  [2/4] Convertendo modelo para C++/HLS e compilando com g++...")
         hls_model = hls4ml.converters.convert_from_pytorch_model(
-            net, hls_config=cfg, backend="Vitis", output_dir=os.path.join(temp_dir, "hls_prj")
+            net, hls_config=cfg, backend="Vitis", output_dir=prj_dir
         )
         hls_model.compile()
 
-        print("  [3/3] Executando inferencia em ponto fixo...")
+        print("  [3/4] Executando inferencia em ponto fixo...")
         dummy_input = np.ones((1, 16), dtype=np.float32)
         prediction = hls_model.predict(dummy_input)
         print(f"  [OK] Inferencia executada com sucesso. Saida: {np.round(prediction, 4)}")
+
+        print("  [4/4] Executando sintese RTL (Verilog/VHDL), relatorios e co-simulacao...")
+        report = hls_model.build(csim=True, synth=True, cosim=True, validation=True, log_to_stdout=False)
+        sln_dir = os.path.join(prj_dir, "myproject_prj", "solution1")
+        v_files = [f for f in os.listdir(os.path.join(sln_dir, "syn", "verilog")) if f.endswith(".v")]
+        vhd_files = [f for f in os.listdir(os.path.join(sln_dir, "syn", "vhdl")) if f.endswith(".vhd")]
+        if not v_files or not vhd_files or "CSynthesisReport" not in report or "CosimReport" not in report:
+            raise RuntimeError("Artefatos de sintese ou co-simulacao incompletos.")
+        print(
+            f"  [OK] Sintese e co-simulacao validadas: {len(v_files)} .v, {len(vhd_files)} .vhd, "
+            f"Cosim={report['CosimReport'].get('Status')}."
+        )
     except Exception as exc:
         print(f"\n[ERRO] Falha durante a verificacao C++: {exc}")
         ok = False

@@ -76,9 +76,20 @@ def main():
     erro_medio = np.mean(np.abs(y_pytorch - y_hls))
     print(f"[OK] Simulação concluída. Erro médio absoluto (Float32 vs ap_fixed<16,6>): {erro_medio:.6f}")
 
-    # 5. Síntese de hardware no Vivado/Vitis HLS para gerar Verilog/VHDL (opcional)
-    # hls_model.build(csim=False, synth=True, export=True)
-    # hls4ml.report.read_vivado_report(pasta_saida)
+    # 5. Síntese HLS (geração de Verilog/VHDL), Co-Simulação C/RTL e Relatórios
+    print("[INFO] Executando síntese HLS (Verilog/VHDL) e co-simulação C/RTL...")
+    hls_model.build(
+        reset=True,
+        csim=True,
+        synth=True,
+        cosim=True,
+        validation=True,
+    )
+    hls4ml.report.read_vivado_report(pasta_saida)
+
+    syn_dir = os.path.join(pasta_saida, "myproject_prj", "solution1", "syn")
+    print(f"[OK] Verilog gerado em : {os.path.join(syn_dir, 'verilog')}")
+    print(f"[OK] VHDL gerado em    : {os.path.join(syn_dir, 'vhdl')}")
 
 
 if __name__ == "__main__":

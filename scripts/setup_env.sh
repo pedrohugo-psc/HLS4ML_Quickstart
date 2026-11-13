@@ -234,6 +234,31 @@ inline float hypot(float x, float y) { return std::hypot(x, y); }
 with open(os.path.join(shim_inc, "hls_math.h"), "w", encoding="utf-8") as fh:
     fh.write(hls_math_h)
 
+# 5b-bis. Motor de sintese HLS/RTL (Verilog/VHDL), relatorios csynth e co-simulacao C/RTL
+shim_root = os.path.dirname(shim_inc)
+shim_bin = os.path.join(shim_root, "bin")
+os.makedirs(shim_bin, exist_ok=True)
+engine_src = os.path.join(project_dir, "scripts", "hls_synth_engine.py")
+engine_dst = os.path.join(shim_root, "hls_synth_engine.py")
+if os.path.isfile(engine_src):
+    shutil.copyfile(engine_src, engine_dst)
+    os.chmod(engine_dst, 0o755)
+
+venv_python = os.path.join(venv_dir, "bin", "python")
+venv_bin = os.path.join(venv_dir, "bin")
+for tool_name in ("vitis-run", "vitis_hls", "vivado_hls"):
+    tool_path = os.path.join(shim_bin, tool_name)
+    wrapper_txt = f'''#!/usr/bin/env bash
+exec "{venv_python}" "{engine_dst}" "$@"
+'''
+    with open(tool_path, "w", encoding="utf-8") as fh:
+        fh.write(wrapper_txt)
+    os.chmod(tool_path, 0o755)
+    link_path = os.path.join(venv_bin, tool_name)
+    if os.path.lexists(link_path):
+        os.remove(link_path)
+    os.symlink(tool_path, link_path)
+
 # 5c. sitecustomize.py em .venv/lib/python3.12/site-packages/
 sitecustomize_code = f'''"""
 Shims leves de ambiente para execucao transparente do fastmachinelearning/hls4ml-tutorial
@@ -250,6 +275,10 @@ _SHIM_ROOT = os.path.join(_VENV_PREFIX, "share", "hls_shim")
 
 # Evita KeyError: 'XILINX_VITIS' nos 9 notebooks oficiais quando o Vitis HLS nao esta instalado
 os.environ.setdefault("XILINX_VITIS", _SHIM_ROOT)
+_venv_bin_dir = os.path.join(_VENV_PREFIX, "bin")
+_path_entries = os.environ.get("PATH", "").split(os.pathsep)
+if _venv_bin_dir not in _path_entries:
+    os.environ["PATH"] = os.pathsep.join([p for p in _path_entries if p] + [_venv_bin_dir])
 os.environ.setdefault("KERAS_HOME", os.path.join(_VENV_PREFIX, "share", "keras"))
 os.environ.setdefault("IPYTHONDIR", os.path.join(_VENV_PREFIX, "etc", "ipython"))
 os.environ.setdefault("JUPYTER_CONFIG_DIR", os.path.join(_VENV_PREFIX, "etc", "jupyter"))
@@ -445,8 +474,15 @@ def _patch_hls4ml_converters(mod):
         return
     orig_sym = mod.convert_from_symbolic_expression
 
+    def _is_real_hls(cmd_name):
+        resolved = shutil.which(cmd_name)
+        if not resolved:
+            return False
+        real = os.path.realpath(resolved)
+        return "hls_shim" not in real and not real.startswith(os.path.realpath(_VENV_PREFIX))
+
     def _wrapped_symbolic(*args, **kwargs):
-        has_hls = shutil.which("vivado_hls") is not None or shutil.which("vitis_hls") is not None
+        has_hls = _is_real_hls("vivado_hls") or _is_real_hls("vitis_hls")
         if not has_hls:
             if kwargs.get("hls_include_path") is None:
                 kwargs["hls_include_path"] = os.path.join(_SHIM_ROOT, "include")
@@ -570,6 +606,7 @@ if os.path.isfile(kernel_json_path):
     with open(kernel_json_path, "r", encoding="utf-8") as fh:
         kdata = json.load(fh)
     env_map = kdata.setdefault("env", {})
+    env_map["XILINX_VITIS"] = os.path.join(venv_dir, "share", "hls_shim")
     env_map["KERAS_HOME"] = os.path.join(venv_dir, "share", "keras")
     env_map["IPYTHONDIR"] = os.path.join(venv_dir, "etc", "ipython")
     env_map["JUPYTER_CONFIG_DIR"] = os.path.join(venv_dir, "etc", "jupyter")
